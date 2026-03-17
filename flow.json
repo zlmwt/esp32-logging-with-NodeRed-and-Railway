@@ -1,0 +1,284 @@
+[
+  {
+    "id": "tab_main",
+    "type": "tab",
+    "label": "ESP32 Control Dashboard"
+  },
+
+  {
+    "id": "ui_tab",
+    "type": "ui_tab",
+    "name": "ESP32",
+    "icon": "dashboard",
+    "order": 1
+  },
+
+  {
+    "id": "group_control",
+    "type": "ui_group",
+    "name": "Control",
+    "tab": "ui_tab",
+    "order": 1,
+    "width": "12"
+  },
+
+  {
+    "id": "group_temp",
+    "type": "ui_group",
+    "name": "Temperature",
+    "tab": "ui_tab",
+    "order": 2,
+    "width": "6"
+  },
+
+  {
+    "id": "group_gas",
+    "type": "ui_group",
+    "name": "Gas",
+    "tab": "ui_tab",
+    "order": 3,
+    "width": "6"
+  },
+
+  {
+    "id": "group_sys",
+    "type": "ui_group",
+    "name": "System",
+    "tab": "ui_tab",
+    "order": 4,
+    "width": "12"
+  },
+
+  {
+    "id": "mqtt_in",
+    "type": "mqtt in",
+    "z": "tab_main",
+    "name": "ESP32 Data",
+    "topic": "esp32/data",
+    "broker": "mqtt_broker",
+    "x": 100,
+    "y": 100,
+    "wires": [["json"]]
+  },
+
+  {
+    "id": "json",
+    "type": "json",
+    "z": "tab_main",
+    "x": 250,
+    "y": 100,
+    "wires": [["control"]]
+  },
+
+  {
+    "id": "control",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Start/Stop + Interval",
+    "func": "let running = flow.get('running') || false;\nlet interval = flow.get('interval') || 2000;\nlet last = flow.get('last') || 0;\n\nif (!running) return null;\n\nlet now = Date.now();\nif (now - last < interval) return null;\n\nflow.set('last', now);\nreturn msg;",
+    "x": 450,
+    "y": 100,
+    "wires": [["split"]]
+  },
+
+  {
+    "id": "split",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Split",
+    "outputs": 3,
+    "func": "return [\n {payload: msg.payload.temp},\n {payload: msg.payload.gas},\n msg\n];",
+    "x": 650,
+    "y": 100,
+    "wires": [
+      ["temp_gauge","temp_chart"],
+      ["gas_gauge","gas_chart"],
+      ["table_func","alert_func"]
+    ]
+  },
+
+  {
+    "id": "start_btn",
+    "type": "ui_button",
+    "z": "tab_main",
+    "name": "Start",
+    "group": "group_control",
+    "label": "START",
+    "color": "#00ffcc",
+    "x": 200,
+    "y": 200,
+    "wires": [["start_func"]]
+  },
+
+  {
+    "id": "stop_btn",
+    "type": "ui_button",
+    "z": "tab_main",
+    "name": "Stop",
+    "group": "group_control",
+    "label": "STOP",
+    "color": "#ff4444",
+    "x": 200,
+    "y": 250,
+    "wires": [["stop_func"]]
+  },
+
+  {
+    "id": "start_func",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Start Logic",
+    "func": "flow.set('running', true);\nreturn null;",
+    "x": 400,
+    "y": 200,
+    "wires": []
+  },
+
+  {
+    "id": "stop_func",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Stop Logic",
+    "func": "flow.set('running', false);\nreturn null;",
+    "x": 400,
+    "y": 250,
+    "wires": []
+  },
+
+  {
+    "id": "slider",
+    "type": "ui_slider",
+    "z": "tab_main",
+    "name": "Interval",
+    "label": "Interval (ms)",
+    "group": "group_control",
+    "min": 500,
+    "max": 10000,
+    "step": 500,
+    "x": 200,
+    "y": 300,
+    "wires": [["interval_func"]]
+  },
+
+  {
+    "id": "interval_func",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Set Interval",
+    "func": "flow.set('interval', msg.payload);\nreturn null;",
+    "x": 400,
+    "y": 300,
+    "wires": []
+  },
+
+  {
+    "id": "temp_gauge",
+    "type": "ui_gauge",
+    "z": "tab_main",
+    "group": "group_temp",
+    "title": "Temperature",
+    "min": 0,
+    "max": 50,
+    "x": 900,
+    "y": 50,
+    "wires": []
+  },
+
+  {
+    "id": "temp_chart",
+    "type": "ui_chart",
+    "z": "tab_main",
+    "group": "group_temp",
+    "label": "Temp Chart",
+    "x": 900,
+    "y": 100,
+    "wires": [[]]
+  },
+
+  {
+    "id": "gas_gauge",
+    "type": "ui_gauge",
+    "z": "tab_main",
+    "group": "group_gas",
+    "title": "Gas",
+    "min": 0,
+    "max": 5000,
+    "x": 900,
+    "y": 150,
+    "wires": []
+  },
+
+  {
+    "id": "gas_chart",
+    "type": "ui_chart",
+    "z": "tab_main",
+    "group": "group_gas",
+    "label": "Gas Chart",
+    "x": 900,
+    "y": 200,
+    "wires": [[]]
+  },
+
+  {
+    "id": "table_func",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Last 10",
+    "func": "let d = flow.get('data')||[];\nd.unshift(msg.payload);\nif(d.length>10)d.pop();\nflow.set('data',d);\nmsg.payload=d;\nreturn msg;",
+    "x": 850,
+    "y": 250,
+    "wires": [["table"]]
+  },
+
+  {
+    "id": "table",
+    "type": "ui_table",
+    "z": "tab_main",
+    "group": "group_sys",
+    "x": 1050,
+    "y": 250,
+    "wires": []
+  },
+
+  {
+    "id": "alert_func",
+    "type": "function",
+    "z": "tab_main",
+    "name": "Alert",
+    "func": "msg.payload = (msg.payload.temp>35||msg.payload.gas>2000)?'⚠ ALERT':'✔ NORMAL';\nreturn msg;",
+    "x": 850,
+    "y": 300,
+    "wires": [["status"]]
+  },
+
+  {
+    "id": "status",
+    "type": "ui_text",
+    "z": "tab_main",
+    "group": "group_sys",
+    "label": "Status",
+    "x": 1050,
+    "y": 300,
+    "wires": []
+  },
+
+  {
+    "id": "mqtt_broker",
+    "type": "mqtt-broker",
+    "name": "HiveMQ",
+    "broker": "7fbe9f38a0b8452ba369a4e08976b817.s1.eu.hivemq.cloud",
+    "port": "8883",
+    "usetls": true,
+    "tls": "tls",
+    "credentials": {
+      "user": "esp32",
+      "password": "Abcd1234"
+    }
+  },
+
+  {
+    "id": "tls",
+    "type": "tls-config",
+    "verifyservercert": false
+  }
+]
